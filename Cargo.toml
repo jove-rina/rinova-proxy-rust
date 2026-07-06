@@ -1,0 +1,12 @@
+[workspace]
+members = ["rinova-proxy-sdk", "rinova-proxy-cli"]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+authors = ["Rinova"]
+repository = "https://github.com/jove-rina/rinova-proxy-rust"
+homepage = "https://github.com/jove-rina/rinova-proxy-rust"
+rust-version = "1.75"

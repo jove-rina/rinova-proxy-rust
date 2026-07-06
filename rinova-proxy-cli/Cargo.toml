@@ -1,0 +1,24 @@
+[package]
+name = "rinova-proxy-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Proxy subscription → Clash config — CLI tool"
+readme = "README.md"
+keywords = ["proxy", "subscription", "clash", "cli", "jms"]
+categories = ["command-line-utilities", "network-programming"]
+
+[[bin]]
+name = "proxy-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4" }
+rinova-proxy-sdk = { version = "1.0.0", path = "../rinova-proxy-sdk" }
+serde_yaml = "0.9"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+url = "2"
