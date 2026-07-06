@@ -3,6 +3,7 @@ name = "rinova-proxy-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+license-file = "../LICENSE"
 authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
@@ -13,7 +14,7 @@ keywords = ["proxy", "subscription", "clash", "cli", "jms"]
 categories = ["command-line-utilities", "network-programming"]
 
 [[bin]]
-name = "proxy-cli"
+name = "rinova-proxy-cli"
 path = "src/main.rs"
 
 [dependencies]

@@ -2,12 +2,12 @@
 
 ## [1.0.0] — 2026-07-06
 
-Initial Rust release of **Rinova Proxy**.
+Initial Rust release of **Rinova Proxy** by **Rina**.
 
 ### Crates
 
 - **`rinova-proxy-sdk@1.0.0`** — Rust SDK library
-- **`rinova-proxy-cli@1.0.0`** — CLI binary (`proxy-cli`)
+- **`rinova-proxy-cli@1.0.0`** — CLI binary (`rinova-proxy-cli`)
 
 ### Features
 

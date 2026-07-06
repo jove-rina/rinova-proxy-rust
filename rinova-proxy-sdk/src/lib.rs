@@ -130,4 +130,56 @@ mod tests {
     fn convert_from_lines_throws_on_empty() {
         assert!(convert_from_lines(&[] as &[String], None).is_err());
     }
+
+    #[test]
+    fn convert_from_lines_yaml_contains_groups_and_rules() {
+        let lines = vec![
+            "ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@us1.example.com:8388#US-01".to_string(),
+            "trojan://pass@sg.example.com:443?security=tls&sni=sg.example.com#SG-01".to_string(),
+        ];
+        let result = convert_from_lines(&lines, None).unwrap();
+        assert!(result.yaml.contains("proxy-groups:"));
+        assert!(result.yaml.contains("rules:"));
+        assert!(result.yaml.contains("SG-01"));
+    }
+
+    #[test]
+    fn convert_from_lines_skips_dedup_when_false() {
+        let lines = vec![
+            "ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@a.com:443#Node".to_string(),
+            "ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@b.com:443#Node".to_string(),
+        ];
+        let result = convert_from_lines(
+            &lines,
+            Some(ConvertOptions {
+                rules: RuleMode::Builtin,
+                deduplicate: false,
+            }),
+        )
+        .unwrap();
+        assert_eq!(result.nodes[0].name, "Node");
+        assert_eq!(result.nodes[1].name, "Node");
+    }
+
+    #[test]
+    fn convert_from_lines_defaults_to_builtin_rules() {
+        let lines = vec![
+            "ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@us1.example.com:8388#US-01".to_string(),
+        ];
+        let result = convert_from_lines(&lines, None).unwrap();
+        assert!(result.config.rules[0].starts_with("DOMAIN-SUFFIX"));
+    }
+
+    #[test]
+    fn convert_from_lines_throws_when_all_unparseable() {
+        assert!(convert_from_lines(&["invalid://line".to_string()], None).is_err());
+    }
+
+    #[test]
+    fn parse_uri_and_build_config_to_yaml() {
+        let node = parse_uri("ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@host:8388#Test").unwrap();
+        let config = build_config(&[node], RuleMode::Builtin);
+        let yaml = to_yaml(&config).unwrap();
+        assert!(yaml.contains("Test"));
+    }
 }

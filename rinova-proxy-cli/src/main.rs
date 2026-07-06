@@ -49,7 +49,7 @@ fn build_command() -> Command {
         )
     };
 
-    Command::new("proxy-cli")
+    Command::new("rinova-proxy-cli")
         .version("1.0.0")
         .about(about)
         .arg(

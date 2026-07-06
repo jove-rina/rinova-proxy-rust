@@ -58,6 +58,7 @@ impl ServerHandle {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct HealthResponse {
     status: &'static str,
     nodes: usize,
@@ -529,6 +530,20 @@ mod tests {
             .unwrap();
         assert!(yaml.contains("proxies:"));
         assert!(yaml.contains("美国-01"));
+
+        let yaml_with_query = reqwest::get(format!(
+            "http://127.0.0.1:{convert_port}/clash.yaml?t={}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        ))
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+        assert!(yaml_with_query.contains("美国-01"));
 
         let refresh = reqwest::Client::new()
             .post(format!("http://127.0.0.1:{convert_port}/refresh"))

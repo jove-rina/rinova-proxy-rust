@@ -1,54 +1,53 @@
 # Rinova Proxy (Rust)
 
-Convert subscription links to Clash configuration files.
+Convert proxy subscription links to Clash configuration files.
 
-> **v1.0.0** — `rinova-proxy-sdk` + `rinova-proxy-cli`
+> **v1.0.0** — `rinova-proxy-sdk` + `rinova-proxy-cli`  
+> Author: **Rina**
 
 Node.js version: [rinova-proxy](https://github.com/jove-rina/rinova-proxy)
+
+## Crates
+
+| Crate | Description | Documentation |
+|-------|-------------|---------------|
+| [`rinova-proxy-sdk`](./rinova-proxy-sdk/) | Rust library | [SDK README](./rinova-proxy-sdk/README.md) |
+| [`rinova-proxy-cli`](./rinova-proxy-cli/) | CLI binary (`rinova-proxy-cli`) | [CLI README](./rinova-proxy-cli/README.md) |
 
 ## Installation
 
 ```bash
-# CLI
+# CLI (installs binary `rinova-proxy-cli`)
 cargo install rinova-proxy-cli
 
-# SDK
+# SDK (add to your Cargo project)
 cargo add rinova-proxy-sdk
 ```
 
-## CLI Usage
+Build from source:
 
 ```bash
-proxy-cli -u "https://your-jms-subscription-url"
-proxy-cli -u "https://..." -o ./clash-config.yaml
-proxy-cli -u "https://..." --rules external
-proxy-cli -u "https://..." --merge ~/.config/clash-verge-rev/profiles/current.yaml
-proxy-cli -p 25500 -u "https://..." -i 60
+git clone git@github.com:jove-rina/rinova-proxy-rust.git
+cd rinova-proxy-rust
+cargo build --release
 ```
 
-### HTTP subscription service
+## Quick Start
 
-Verge Rev → Profiles → Import → Remote subscription:
+**CLI — one-shot conversion:**
 
+```bash
+rinova-proxy-cli -u "https://your-jms-subscription-url"
 ```
-URL: http://127.0.0.1:25500/clash.yaml
-Update interval: 60
-```
 
-| Path | Description |
-|------|-------------|
-| `/clash.yaml` | Clash config (YAML) |
-| `/health` | Health check JSON |
-| `/refresh` | POST to trigger manual refresh |
-
-## SDK Usage
+**SDK — programmatic conversion:**
 
 ```rust
 use rinova_proxy_sdk::convert;
 
 #[tokio::main]
 async fn main() -> Result<(), rinova_proxy_sdk::ProxyError> {
-    let result = convert("https://jms-sub-url", None).await?;
+    let result = convert("https://your-jms-subscription-url", None).await?;
     std::fs::write("clash.yaml", result.yaml)?;
     Ok(())
 }
@@ -56,12 +55,40 @@ async fn main() -> Result<(), rinova_proxy_sdk::ProxyError> {
 
 ## Supported Protocols
 
-| Protocol | Status |
-|----------|--------|
-| Shadowsocks (SS) | ✅ SIP002 + Legacy |
-| VMess | ✅ ws / tcp / grpc / h2 / quic / kcp |
-| Trojan | ✅ |
-| Hysteria2 | ✅ `hysteria2://` + `hy2://` |
+| Protocol | URI prefix | Notes |
+|----------|------------|-------|
+| Shadowsocks | `ss://` | SIP002, Legacy, JMS extension |
+| VMess | `vmess://` | ws / tcp / grpc / h2 / quic / kcp + tls |
+| Trojan | `trojan://` | Standard |
+| Hysteria2 | `hysteria2://`, `hy2://` | bandwidth `up` / `down` |
+
+## Features
+
+- Parse SS / VMess / Trojan / Hysteria2 subscription lines
+- HTTP subscription service (`-p`) for Clash Verge Rev auto-refresh
+- Node name deduplication (`-2`, `-3` suffixes)
+- ACL4SSR-style chained policy groups
+- Merge into existing Clash config (`--merge`)
+- Subscription URL masking in logs
+- i18n: en / zh via `LANG` or `LC_ALL`
+
+## Internationalization
+
+CLI messages and `--help` text adapt to your system language. If `LANG` or `LC_ALL` starts with `zh`, Chinese is used; otherwise English.
+
+```bash
+LANG=zh_CN.UTF-8 rinova-proxy-cli --help
+LANG=en_US.UTF-8 rinova-proxy-cli -u "https://..."
+```
+
+SDK:
+
+```rust
+use rinova_proxy_sdk::{t, get_lang, Lang};
+
+assert!(matches!(get_lang(), Lang::En | Lang::Zh));
+println!("{}", t("parsed", &[("count", "5")]));
+```
 
 ## Development
 
@@ -79,4 +106,6 @@ cargo publish -p rinova-proxy-cli --dry-run
 
 ## License
 
-MIT — see [LICENSE](./LICENSE)
+MIT — Copyright (c) 2026 Rina. See [LICENSE](./LICENSE).
+
+中文文档：[README.zh.md](./README.zh.md)

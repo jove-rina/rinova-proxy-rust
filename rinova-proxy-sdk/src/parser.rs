@@ -557,4 +557,207 @@ mod tests {
         let nodes = parse_lines(&lines);
         assert_eq!(nodes.len(), 2);
     }
+
+    #[test]
+    fn ss_sip002_nonstandard_extension() {
+        use base64::Engine;
+        let full = "aes-256-gcm:RealPassword@extra.example.com:8443";
+        let b64 = base64::engine::general_purpose::STANDARD.encode(full);
+        let uri = format!("ss://{b64}@extra.example.com:8443#测试");
+        let node = parse_uri(&uri).unwrap();
+        assert_eq!(
+            node.extra.get("cipher").and_then(|v| v.as_str()),
+            Some("aes-256-gcm")
+        );
+        assert_eq!(
+            node.extra.get("password").and_then(|v| v.as_str()),
+            Some("RealPassword")
+        );
+        assert_eq!(node.server, "extra.example.com");
+        assert_eq!(node.port, 8443);
+    }
+
+    #[test]
+    fn vmess_grpc() {
+        use base64::Engine;
+        let cfg = serde_json::json!({
+            "v": "2",
+            "ps": "日本-01",
+            "add": "jp1.example.com",
+            "port": "443",
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "aid": "0",
+            "net": "grpc",
+            "serviceName": "my-service",
+            "tls": "tls"
+        });
+        let b64 = base64::engine::general_purpose::STANDARD.encode(cfg.to_string());
+        let node = parse_uri(&format!("vmess://{b64}")).unwrap();
+        assert_eq!(node.extra.get("network").and_then(|v| v.as_str()), Some("grpc"));
+        let grpc_opts = node.extra.get("grpc-opts").unwrap();
+        let mapping = grpc_opts.as_mapping().unwrap();
+        let key = YamlValue::String("grpc-service-name".into());
+        assert_eq!(
+            mapping.get(&key).and_then(|v| v.as_str()),
+            Some("my-service")
+        );
+    }
+
+    #[test]
+    fn vmess_h2() {
+        use base64::Engine;
+        let cfg = serde_json::json!({
+            "v": "2",
+            "ps": "日本-01",
+            "add": "jp1.example.com",
+            "port": "443",
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "aid": "0",
+            "net": "h2",
+            "path": "/api",
+            "host": "example.com",
+            "tls": "tls"
+        });
+        let b64 = base64::engine::general_purpose::STANDARD.encode(cfg.to_string());
+        let node = parse_uri(&format!("vmess://{b64}")).unwrap();
+        assert_eq!(node.extra.get("network").and_then(|v| v.as_str()), Some("h2"));
+        let h2_opts = node.extra.get("h2-opts").unwrap().as_mapping().unwrap();
+        assert_eq!(
+            h2_opts
+                .get(&YamlValue::String("path".into()))
+                .and_then(|v| v.as_str()),
+            Some("/api")
+        );
+        assert_eq!(
+            h2_opts
+                .get(&YamlValue::String("host".into()))
+                .and_then(|v| v.as_str()),
+            Some("example.com")
+        );
+    }
+
+    #[test]
+    fn vmess_tcp_no_tls() {
+        use base64::Engine;
+        let cfg = serde_json::json!({
+            "v": "2",
+            "ps": "日本-01",
+            "add": "jp1.example.com",
+            "port": "443",
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "aid": "0",
+            "net": "tcp",
+            "tls": "none"
+        });
+        let b64 = base64::engine::general_purpose::STANDARD.encode(cfg.to_string());
+        let node = parse_uri(&format!("vmess://{b64}")).unwrap();
+        assert!(node.extra.get("network").is_none());
+        assert_eq!(node.extra.get("tls").and_then(|v| v.as_bool()), Some(false));
+    }
+
+    #[test]
+    fn vmess_remarks_host_alias() {
+        use base64::Engine;
+        let cfg = serde_json::json!({
+            "v": "2",
+            "remarks": "香港-01",
+            "add": "hk.example.com",
+            "port": "80",
+            "id": "uuid",
+            "aid": "0",
+            "net": "tcp"
+        });
+        let b64 = base64::engine::general_purpose::STANDARD.encode(cfg.to_string());
+        let node = parse_uri(&format!("vmess://{b64}")).unwrap();
+        assert_eq!(node.name, "香港-01");
+        assert_eq!(node.server, "hk.example.com");
+    }
+
+    #[test]
+    fn vmess_client_fingerprint_alpn() {
+        use base64::Engine;
+        let cfg = serde_json::json!({
+            "v": "2",
+            "ps": "日本-01",
+            "add": "jp1.example.com",
+            "port": "443",
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "aid": "0",
+            "net": "ws",
+            "tls": "tls",
+            "fp": "chrome",
+            "alpn": "h2,http/1.1"
+        });
+        let b64 = base64::engine::general_purpose::STANDARD.encode(cfg.to_string());
+        let node = parse_uri(&format!("vmess://{b64}")).unwrap();
+        assert_eq!(
+            node.extra
+                .get("client-fingerprint")
+                .and_then(|v| v.as_str()),
+            Some("chrome")
+        );
+        let alpn = node.extra.get("alpn").unwrap().as_sequence().unwrap();
+        assert_eq!(alpn.len(), 2);
+        assert_eq!(alpn[0].as_str(), Some("h2"));
+        assert_eq!(alpn[1].as_str(), Some("http/1.1"));
+    }
+
+    #[test]
+    fn trojan_allow_insecure() {
+        let uri = "trojan://pass@us1.example.com:443?allowInsecure=1&sni=us1.example.com#美国";
+        let node = parse_uri(uri).unwrap();
+        assert_eq!(
+            node.extra.get("skip-cert-verify").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn trojan_fallback_name_to_hostname() {
+        let uri = "trojan://pass@jp1.example.com:443";
+        let node = parse_uri(uri).unwrap();
+        assert_eq!(node.name, "jp1.example.com");
+    }
+
+    #[test]
+    fn hysteria2_hy2_prefix() {
+        let uri = "hy2://pass@sg1.example.com:8443?insecure=1&alpn=h3,h2#新加坡-Hy2";
+        let node = parse_uri(uri).unwrap();
+        assert_eq!(node.proxy_type, ProxyType::Hysteria2);
+        assert_eq!(node.server, "sg1.example.com");
+        assert_eq!(node.port, 8443);
+        let alpn = node.extra.get("alpn").unwrap().as_sequence().unwrap();
+        assert_eq!(alpn.len(), 2);
+        assert_eq!(alpn[0].as_str(), Some("h3"));
+        assert_eq!(alpn[1].as_str(), Some("h2"));
+    }
+
+    #[test]
+    fn hysteria2_up_down() {
+        let uri = "hysteria2://pass@us1.example.com:443?up=50&down=150&insecure=1#美国";
+        let node = parse_uri(uri).unwrap();
+        assert_eq!(node.extra.get("up").and_then(|v| v.as_u64()), Some(50));
+        assert_eq!(node.extra.get("down").and_then(|v| v.as_u64()), Some(150));
+    }
+
+    #[test]
+    fn hysteria2_fallback_name_to_hostname() {
+        let uri = "hysteria2://pass@hk1.example.com:443";
+        let node = parse_uri(uri).unwrap();
+        assert_eq!(node.name, "hk1.example.com");
+        assert!(node.extra.get("skip-cert-verify").is_none());
+    }
+
+    #[test]
+    fn parse_lines_skips_unparseable() {
+        let lines = vec![
+            "ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@us1.example.com:8388#美国".to_string(),
+            "unknown://bad-line".to_string(),
+            "trojan://pass@sg.example.com:443?sni=sg.example.com#新加坡".to_string(),
+        ];
+        let nodes = parse_lines(&lines);
+        assert_eq!(nodes.len(), 2);
+        assert_eq!(nodes[0].proxy_type, ProxyType::Ss);
+        assert_eq!(nodes[1].proxy_type, ProxyType::Trojan);
+    }
 }
